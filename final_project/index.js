@@ -13,12 +13,23 @@ app.use("/customer",session({secret:"fingerprint_customer",resave: true, saveUni
 app.use("/customer/auth/*", function auth(req,res,next){
     const token = req.headers['authorization'];
 
-    if (!token) {
+    if (req.session.authorization) {
+        let token = req.session.authorization['token'];
+        try {
+            const decoded = jwt.verify(token, 'secret');
+            req.user = decoded;
+            next();
+        } catch (error) {
+            return res.status(400).json({ message: "Invalid token." });
+        }
+    }
+
+    else if (!token) {
         return res.status(401).json({ message: "Access denied. No token provided." });
     }
 
     try {
-        const decoded = jwt.verify(token, 'your_jwt_secret');
+        const decoded = jwt.verify(token.split(' ')[1], 'secret');
         req.user = decoded;
         next();
     } catch (error) {
@@ -26,7 +37,7 @@ app.use("/customer/auth/*", function auth(req,res,next){
     }
 });
  
-const PORT =5000;
+const PORT = 5000;
 
 app.use("/customer", customer_routes);
 app.use("/", genl_routes);
